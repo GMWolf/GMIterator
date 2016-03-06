@@ -597,6 +597,7 @@ if (remove == noone) {
 /*  adds an element to the linked list ( 1 2|4 -> 1 2 3 | 4)
 **  Author: Felix Bridault
 **  Date: 02/03/16
+**  Revised: 06/03/16
 **  Arguments:
 **            Argument0 id: the index of iterator
 **            Argument1 value: the value to add
