@@ -592,6 +592,39 @@ if (remove == noone) {
     __GMI_ill_set_returned__(iterator, noone);
 }
 
+#define __GMI_ill_add__
+///__GMI_ill_add__(iterator, value)
+/*  adds an element to the linked list ( 1 2|4 -> 1 2 3 | 4)
+**  Author: Felix Bridault
+**  Date: 02/03/16
+**  Arguments:
+**            Argument0 id: the index of iterator
+**            Argument1 value: the value to add
+**
+**  Returns: nothing
+*/
+
+var iterator = argument0;
+var value = argument1;
+
+var previous = __GMI_ill_get_previous__(iterator);
+var next = __GMI_ill_get_next__(iterator);
+var new_link = __GMI_ll_link_create__(previous, next, value);
+var list = __GMI_ill_get_list__(iterator);
+if (previous == noone) {
+    __GMI_ll_set_head_link__(list, new_link);
+} else {
+    __GMI_ll_link_set_next__(previous, new_link);
+}
+
+if (next == noone) {
+    __GMI_ll_set_tail_link__(list, new_link);
+} else {
+    __GMI_ll_link_set_previous__(next, new_link);
+}
+
+__GMI_ill_set_previous__(iterator, new_link);
+
 #define __GMI_ill_get_next__
 ///__GMI_ill_get_next__(iterator)
 
@@ -847,6 +880,37 @@ switch(type) {
         break;
 }
 
+#define iterator_add
+///iterator_add(iterator, value)
+
+/*  adds element to iterable: 1 2|4 -> 1 2 3|4
+**  Author: Felix Bridault
+**  Date: 02/03/16
+**  Arguments:
+**            Argument0 id: the index of iterator
+**
+**
+**  Returns: nothing
+**
+**  places a value between previous and next. next will be unafected, and previous ill return new element.
+*/
+
+var iterator = argument0;
+var value = argument1;
+var type = buffer_peek(iterator, 0, buffer_u8);
+
+switch(type) {
+    case GMIterator_linked_list: 
+        return __GMI_ill_add__(iterator, value);
+        break;
+    case GMIterator_array_list:
+        return __GMI_ial_add__(iterator, value);
+        break;
+    default:
+        show_error("unknown ds type", true);
+        break;
+}
+
 #define iterator_destroy
 ///iterator_destroy(iterator)
 
@@ -941,6 +1005,29 @@ if (oldpos == pos) {
         __GMI_ial_set_old_pos__(iterator, pos - 1);
     }
 }
+
+
+#define __GMI_ial_add__
+///__GMI_ial_add__(iterator, value)
+/*  adds value, and iterates over ( 1 2 | 4 -> 1 2 3 | 4
+**  Author: Felix Bridault
+**  Date: 02/03/16
+**  Arguments:
+**            Argument0 id: the index of iterator
+**            Argument1 value: the value to add
+**
+**  Returns: nothing
+*/
+
+
+var iterator = argument0;
+var value = argument1;
+
+var pos = __GMI_ial_get_pos__(iterator);
+var list = __GMI_ial_get_list__(iterator);
+ds_list_insert(list, pos, value);
+__GMI_ial_set_pos__(iterator, pos + 1);
+__GMI_ial_set_old_pos__(iterator, pos);
 
 
 #define __GMI_ial_previous__
