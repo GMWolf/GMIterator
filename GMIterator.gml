@@ -10,15 +10,13 @@
 **  Returns: The index of newly created list
 */
 
-//create the buffer [s32 head, s32 tail]
-var buffer = buffer_create(8, buffer_fixed, 4);
 
-//set first and last to noone (-4)
-buffer_write(buffer, buffer_s32, noone);
-buffer_write(buffer, buffer_s32, noone);
+var list;
+list[1] = noone; //next
+list[0] = noone; //previous
 
-//return the index
-return buffer;
+
+return list;
 
 #define ds_linked_list_destroy
 ///ds_linked_list_destroy(id)
@@ -39,8 +37,8 @@ while(iterator_has_next(iterator))
  iterator_next(iterator);
  iterator_remove(iterator);
 }
-buffer_delete(iterator);
-buffer_delete(list);
+iterator = 0; //free array
+list = 0; //free array
 
 #define ds_linked_list_add_head
 ///ds_linked_list_add_head(id, value)
@@ -162,12 +160,10 @@ return data;
 var list = argument[0];
 var at_tail = false;
 if (argument_count == 2) { at_tail = argument[1]; }
-
-//create iterator buffer [0 u8 type, 1 s32 list, 5 s32 previous, 9 s32 next, 13 s32 returned]
-var buffer = buffer_create(17, buffer_fixed, 1);
-buffer_write(buffer, buffer_u8, GMIterator_linked_list);
-buffer_write(buffer, buffer_s32, list);
-//get link
+var iterator;
+iterator[4] = noone;
+iterator[0] = GMIterator_linked_list;
+iterator[1] = list;
 var next, previous;
 if (at_tail) {
     next = noone;
@@ -176,11 +172,10 @@ if (at_tail) {
     next = __GMI_ll_get_head_link__(list);
     previous = noone;
 }
-buffer_write(buffer, buffer_s32, previous);
-buffer_write(buffer, buffer_s32, next);
-buffer_write(buffer, buffer_s32, noone);
+iterator[2] = previous;
+iterator[3] = next;
 
-return buffer;
+return iterator;
 
 
 #define ds_linked_list_sort
@@ -254,74 +249,18 @@ return count;
 **
 **  Returns: The index of newly created link
 */
-
+gml_pragma("forceinline");
 var previous = argument0;
 var next = argument1;
 var data = argument2;
 
-var type = __GMI_var_get_type__(data);
+var link;
+link[2] = data;
+link[0] = previous;
+link[1] = next;
 
-//get size of buffer
-var size = 9 + buffer_sizeof(type);
-if (type == buffer_string) {
-    size += string_byte_length(data) + 1;
-}
 
-//create and fill buffer [0 s32 previous, 4 s32 next, 8 u8 type, type data]
-var buffer = buffer_create(size, buffer_fixed, 1);
-buffer_write(buffer, buffer_s32, previous);
-buffer_write(buffer, buffer_s32, next);
-buffer_write(buffer, buffer_u8, type);
-buffer_write(buffer, type, data);
-
-//return the buffer
-return buffer;
-
-#define __GMI_ll_link_get_next__
-///__GMI_ll_link_get_next__(id)
-
-/*  Finds the tail link in a list
-**  Author: Felix Bridault
-**  Date: 02/03/16
-**  Arguments:
-**      Argument0 id:    the index of the link
-**
-**  Returns: The next link
-*/
-
-var list = argument0;
-var next = buffer_peek(argument0, 4, buffer_s32);
-return next;
-
-#define __GMI_ll_link_set_previous__
-///__GMI_ll_link_set_previous__(link, previous)
-
-/*  Sets the previous link for a llink
-**  Author: Felix Bridault
-**  Date: 02/03/16
-**  Arguments:
-**      Argument0 link: the link to change the previous of
-**      Argument1 previous: the previous link
-*/
-
-var link = argument0;
-var previous = argument1;
-buffer_poke(link, 0, buffer_s32, previous);
-
-#define __GMI_ll_link_set_next__
-///__GMI_ll_link_set_next__(link, next)
-
-/*  Sets the next link for a llink
-**  Author: Felix Bridault
-**  Date: 02/03/16
-**  Arguments:
-**      Argument0 link: the link to change the previous of
-**      Argument1 next: the next link
-*/
-
-var link = argument0;
-var next = argument1;
-buffer_poke(link, 4, buffer_s32, next);
+return link;
 
 #define __GMI_ll_link_get_previous__
 ///__GMI_ll_link_get_previous__(id)
@@ -334,10 +273,48 @@ buffer_poke(link, 4, buffer_s32, next);
 **
 **  Returns: The next link
 */
+gml_pragma("forceinline");
+return argument0[0];
 
-var list = argument0;
-var previous = buffer_peek(argument0, 0, buffer_s32);
-return previous;
+#define __GMI_ll_link_set_previous__
+///__GMI_ll_link_set_previous__(link, previous)
+
+/*  Sets the previous link for a llink
+**  Author: Felix Bridault
+**  Date: 02/03/16
+**  Arguments:
+**      Argument0 link: the link to change the previous of
+**      Argument1 previous: the previous link
+*/
+gml_pragma("forceinline");
+argument0[@ 0] = argument1;
+
+#define __GMI_ll_link_get_next__
+///__GMI_ll_link_get_next__(id)
+
+/*  Finds the tail link in a list
+**  Author: Felix Bridault
+**  Date: 02/03/16
+**  Arguments:
+**      Argument0 id:    the index of the link
+**
+**  Returns: The next link
+*/
+gml_pragma("forceinline");
+return argument0[1];
+
+#define __GMI_ll_link_set_next__
+///__GMI_ll_link_set_next__(link, next)
+
+/*  Sets the next link for a llink
+**  Author: Felix Bridault
+**  Date: 02/03/16
+**  Arguments:
+**      Argument0 link: the link to change the previous of
+**      Argument1 next: the next link
+*/
+gml_pragma("forceinline");
+argument0[@ 1] = argument1;
 
 #define __GMI_ll_link_get_value__
 ///__GMI_ll_link_get_value__(id)
@@ -351,11 +328,8 @@ return previous;
 **  Returns: The value of the link
 */
 
-var link = argument0;
-var type = buffer_peek(link, 8, buffer_u8);
-var data = buffer_peek(link, 9, type);
-
-return data;
+gml_pragma("forceinline");
+return argument0[2];
 
 #define __GMI_ll_link_swap__
 ///__GMI_ll_link_swap__(list, link a, link b)
@@ -408,10 +382,8 @@ __GMI_ll_link_set_next__(link_a, next);
 **
 **  Returns: The head link
 */
-
-var list = argument0;
-var first = buffer_peek(argument0, 0, buffer_s32);
-return first;
+gml_pragma("forceinline");
+return argument0[0];
 
 #define __GMI_ll_set_head_link__
 ///__GMI_ll_set_head_link__(id, link)
@@ -426,9 +398,8 @@ return first;
 **  Returns: nothing
 */
 
-var list = argument0;
-var link = argument1;
-buffer_poke(argument0, 0, buffer_s32, link);
+gml_pragma("forceinline");
+argument0[@ 0] = argument1;
 
 #define __GMI_ll_set_tail_link__
 ///__GMI_ll_set_tail_link__(id, link)
@@ -443,9 +414,8 @@ buffer_poke(argument0, 0, buffer_s32, link);
 **  Returns: nothing
 */
 
-var list = argument0;
-var link = argument1;
-buffer_poke(argument0, 4, buffer_s32, link);
+gml_pragma("forceinline");
+argument0[@ 1] = argument1;
 
 #define __GMI_ll_get_tail_link__
 ///__GMI_ll_get_tail_link__(id)
@@ -459,9 +429,8 @@ buffer_poke(argument0, 4, buffer_s32, link);
 **  Returns: The tail link
 */
 
-var list = argument0;
-var tail = buffer_peek(argument0, 4, buffer_s32);
-return tail;
+gml_pragma("forceinline");
+return argument0[1];
 
 #define __GMI_ill_next__
 ///__GMI_ill_next__(iterator)
@@ -585,7 +554,7 @@ if (remove == noone) {
         __GMI_ll_link_set_previous__(next, previous);
     }
     
-    buffer_delete(remove);
+    remove = 0; //free array
     
     __GMI_ill_set_previous__(iterator, previous);
     __GMI_ill_set_next__(iterator, next);
@@ -637,8 +606,8 @@ __GMI_ill_set_previous__(iterator, new_link);
 **
 **  Returns: The next link in iterator
 */
-
-return(buffer_peek(argument0, 9, buffer_s32));
+gml_pragma("forceinline");
+return argument0[3];
 
 #define __GMI_ill_get_previous__
 ///__GMI_ill_get_previous__(iterator)
@@ -649,8 +618,8 @@ return(buffer_peek(argument0, 9, buffer_s32));
 **
 **  Returns: The previous link in iterator
 */
-
-return(buffer_peek(argument0, 5, buffer_s32));
+gml_pragma("forceinline");
+return(argument0[2]);
 
 #define __GMI_ill_get_returned__
 ///__GMI_ill_get_returned__(iterator)
@@ -663,8 +632,8 @@ return(buffer_peek(argument0, 5, buffer_s32));
 **
 **  Returns: The returned link in iterator
 */
-
-return(buffer_peek(argument0, 13, buffer_s32));
+gml_pragma("forceinline");
+return argument0[4];
 
 #define __GMI_ill_get_list__
 ///__GMI_ill_get_list__(iterator)
@@ -678,7 +647,8 @@ return(buffer_peek(argument0, 13, buffer_s32));
 **  Returns: The list of iterator
 */
 
-return(buffer_peek(argument0, 1, buffer_s32));
+gml_pragma("forceinline");
+return argument0[1];
 
 #define __GMI_ill_set_next__
 ///__GMI_ill_set_next__(iterator, link)
@@ -693,7 +663,8 @@ return(buffer_peek(argument0, 1, buffer_s32));
 **  Returns: nothing
 */
 
-buffer_poke(argument0, 9, buffer_s32, argument1);
+gml_pragma("forceinline");
+argument0[@ 3] = argument1;
 
 #define __GMI_ill_set_previous__
 ///__GMI_ill_set_previous__(iterator, link)
@@ -708,7 +679,8 @@ buffer_poke(argument0, 9, buffer_s32, argument1);
 **  Returns: nothing
 */
 
-buffer_poke(argument0, 5, buffer_s32, argument1);
+gml_pragma("forceinline");
+argument0[@ 2] = argument1;
 
 #define __GMI_ill_set_returned__
 ///__GMI_ill_set_returned__(iterator, link)
@@ -723,7 +695,8 @@ buffer_poke(argument0, 5, buffer_s32, argument1);
 **  Returns: nothing
 */
 
-buffer_poke(argument0, 13, buffer_s32, argument1);
+gml_pragma("forceinline");
+argument0[@ 4] = argument1;
 
 #define __GMI_var_get_type__
 ///__GMI_var_get_type__(variable)
@@ -759,7 +732,7 @@ if (is_string(variable)) {
 */
 
 var iterator = argument0;
-var type = buffer_peek(iterator, 0, buffer_u8);
+var type = iterator[0];
 
 switch(type) {
     case GMIterator_linked_list: 
@@ -786,7 +759,7 @@ switch(type) {
 */
 
 var iterator = argument0;
-var type = buffer_peek(iterator, 0, buffer_u8);
+var type = iterator[0];
 
 switch(type) {
     case GMIterator_linked_list: 
@@ -813,7 +786,7 @@ switch(type) {
 */
 
 var iterator = argument0;
-var type = buffer_peek(iterator, 0, buffer_u8);
+var type = iterator[0];
 
 switch(type) {
     case GMIterator_linked_list: 
@@ -840,7 +813,7 @@ switch(type) {
 */
 
 var iterator = argument0;
-var type = buffer_peek(iterator, 0, buffer_u8);
+var type = iterator[0];
 
 switch(type) {
     case GMIterator_linked_list: 
@@ -867,7 +840,7 @@ switch(type) {
 */
 
 var iterator = argument0;
-var type = buffer_peek(iterator, 0, buffer_u8);
+var type = iterator[0];
 
 switch(type) {
     case GMIterator_linked_list: 
@@ -898,7 +871,7 @@ switch(type) {
 
 var iterator = argument0;
 var value = argument1;
-var type = buffer_peek(iterator, 0, buffer_u8);
+var type = iterator[0];
 
 switch(type) {
     case GMIterator_linked_list: 
@@ -924,7 +897,7 @@ switch(type) {
 **  Returns: nothing
 */
 
-buffer_delete(argument0);
+argument0 = 0;
 
 #define ds_list_iterator
 ///ds_list_iterator(id)
@@ -943,17 +916,17 @@ var list = argument[0];
 var at_tail = false;
 if (argument_count == 2) { at_tail = argument[1]; }
 
-//create iterator buffer [0 u8 type, 1 u32 list, 5 u32 pos, 9 u32 oldpos]
-var buffer = buffer_create(13, buffer_fixed, 1);
-buffer_write(buffer, buffer_u8, GMIterator_array_list);
-buffer_write(buffer, buffer_u32, list);
+//create iterator buffer [0type, 1 list, 2 pos, 3 oldpos]
+var iterator;
+iterator[0] = GMIterator_array_list;
+iterator[1] = list;
 var pos = 0;
 if (at_tail) {
     pos = ds_list_size(list);
 }
-buffer_write(buffer, buffer_u32, pos);
-buffer_write(buffer, buffer_u32, pos);
-return(buffer);
+iterator[2] = pos;
+iterator[3] = pos;
+return iterator;
 
 #define __GMI_ial_next__
 ///__GMI_ial_next__(iterator)
@@ -1096,8 +1069,8 @@ return (pos > 0);
 **
 **  Returns: The pos
 */
-
-return(buffer_peek(argument0, 5, buffer_u32));
+gml_pragma("forceinline");
+return argument0[2];
 
 #define __GMI_ial_get_old_pos__
 ///__GMI_ial_get_old_pos__(iterator)
@@ -1109,8 +1082,8 @@ return(buffer_peek(argument0, 5, buffer_u32));
 **
 **  Returns: The old pos
 */
-
-return(buffer_peek(argument0, 9, buffer_u32));
+gml_pragma("forceinline");
+return argument0[3];
 
 #define __GMI_ial_get_list__
 ///__GMI_ial_get_list__(iterator)
@@ -1122,8 +1095,8 @@ return(buffer_peek(argument0, 9, buffer_u32));
 **
 **  Returns: The list
 */
-
-return(buffer_peek(argument0, 1, buffer_u32));
+gml_pragma("forceinline");
+return argument0[1];
 
 #define __GMI_ial_set_pos__
 ///__GMI_ial_set_pos__(iterator, pos)
@@ -1137,7 +1110,8 @@ return(buffer_peek(argument0, 1, buffer_u32));
 **  Returns: nothing
 */
 
-buffer_poke(argument0, 5, buffer_u32, argument1);
+gml_pragma("forceinline");
+return argument0[@ 2] = argument1;
 
 #define __GMI_ial_set_old_pos__
 ///__GMI_ial_set_old_pos__(iterator, old pos)
@@ -1151,5 +1125,6 @@ buffer_poke(argument0, 5, buffer_u32, argument1);
 **  Returns: nothing
 */
 
-buffer_poke(argument0, 9, buffer_u32, argument1);
+gml_pragma("forceinline");
+return argument0[@ 3] = argument1;
 
