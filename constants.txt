@@ -1,0 +1,3 @@
+GMIterator_singly_linked_list=2
+GMIterator_array_list=1
+GMIterator_linked_list=0
